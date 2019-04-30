@@ -1,0 +1,60 @@
+import tweepy
+import time
+from Latitude_Longitude import valid_address
+from darksky import get_weather
+from darksky import get_temperature
+
+
+#Twitter API KEYS
+consumer_key = "hr4uzF8peB6j8Lz2HwizfEuDN"
+consumer_secret = "kT2r5wLgpxtumlyinxVacVoz4a4io72HdXTwKxDz6wtd7FkHkD"
+
+access_token = "1087513254589546497-x4JCClPYwlXV2tmakP2SzipjV8d8av"
+access_token_secret = "f5ZhLuaF6tXgBq7ZzaJG76263EqtL7woDo9Fc1Av1iA1n"
+
+auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
+auth.set_access_token(access_token, access_token_secret)
+
+api = tweepy.API(auth)
+
+
+FILE_NAME = 'last_seen_id.txt'
+
+
+def retrieve_last_seen_id(file_name):
+    f_read = open(file_name, 'r')
+    last_seen_id = int(f_read.read().strip())
+    f_read.close()
+    return last_seen_id
+
+
+def store_last_seen_id(last_seen_id, file_name):
+    f_write = open(file_name, 'w')
+    f_write.write(str(last_seen_id))
+    f_write.close()
+    return
+
+
+def reply_tweets():
+    print('retrieving and replying to tweets...')
+    last_seen_id = retrieve_last_seen_id(FILE_NAME)
+    mentions = api.mentions_timeline(last_seen_id, tweet_mode='extended')
+
+    for mention in reversed(mentions):
+        print(str(mention.id) + " - " + mention.full_text)
+        last_seen_id = mention.id
+        store_last_seen_id(last_seen_id, FILE_NAME)
+
+        if valid_address(mention.full_text) != 'OK':
+            print("Please enter a location or City,State")
+            api.update_status('@' + mention.user.screen_name + " Please enter a location or City,State", mention.id)
+        else:
+            print(get_weather(mention.full_text))
+            print(get_temperature(mention.full_text))
+            api.update_status('@' + mention.user.screen_name + ' The weather is ' + str(get_weather(mention.full_text)) + '\n' +
+                              'Current temperature is ' + str(get_temperature(mention.full_text)) + ' °F', mention.id)
+
+
+while True:
+    reply_tweets()
+    time.sleep(15)
